@@ -8,6 +8,7 @@ type Particle = { x:number;y:number;vx:number;vy:number;life:number;max:number;s
 const copy = {rest:{label:'A quiet moment',instruction:'Whenever you’re ready, begin.'},inhale:{label:'Breathe in',instruction:'Let the breath arrive.'},hold:{label:'Pause gently',instruction:'There is nothing to rush.'},exhale:{label:'Let it go',instruction:'Release, and watch it soften.'}};
 const MIC_METER_SCALE=2500;
 const MIC_MIN_TRIGGER_PERCENT=5;
+const MIC_BURST_COOLDOWN_MS=250;
 
 function App() {
  const videoRef=useRef<HTMLVideoElement>(null),canvasRef=useRef<HTMLCanvasElement>(null),streamRef=useRef<MediaStream|null>(null),micRef=useRef<MediaStream|null>(null),audioRef=useRef<AudioContext|null>(null),rafRef=useRef<number>(0),particles=useRef<Particle[]>([]),phaseTimer=useRef<number|undefined>(undefined),audioFrame=useRef<number>(0),lastBurst=useRef(0),lastTime=useRef(0),audioUiTime=useRef(0),phaseRef=useRef<Phase>('rest');
@@ -30,7 +31,7 @@ function App() {
  cancelAnimationFrame(rafRef.current);const draw=(time:number)=>{const delta=Math.min(2,(time-lastTime.current)/16.67);lastTime.current=time;ctx.clearRect(0,0,rect.width,rect.height);particles.current=particles.current.filter(p=>p.life<p.max);for(const p of particles.current){p.life+=delta;p.x+=p.vx*delta+Math.sin(p.life*.045+p.seed)*.3*delta;p.y+=p.vy*delta;p.vx*=.997;const progress=p.life/p.max;const alpha=Math.sin(Math.PI*progress)*(.07+conf.thickness/58*.15);const radius=p.size*(.45+progress*2.8);const color=palette[p.style];const gradient=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,radius);gradient.addColorStop(0,`${color}55`);gradient.addColorStop(.42,`${color}27`);gradient.addColorStop(1,`${color}00`);ctx.globalAlpha=alpha*5;ctx.fillStyle=gradient;ctx.beginPath();ctx.arc(p.x,p.y,radius,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;if(particles.current.length)rafRef.current=requestAnimationFrame(draw)};rafRef.current=requestAnimationFrame(draw)},[emitWhoosh,vibrateOn]);
 
  const beginRitual=()=>{if(phaseRef.current!=='rest')return;phaseRef.current='inhale';setPhase('inhale');phaseTimer.current=window.setTimeout(()=>{phaseRef.current='hold';setPhase('hold');phaseTimer.current=window.setTimeout(()=>{phaseRef.current='exhale';setPhase('exhale')},1100)},1400)};
- const release=()=>{if(phaseRef.current==='rest'){phaseRef.current='exhale';setPhase('exhale')}else{if(phaseTimer.current)window.clearTimeout(phaseTimer.current);phaseRef.current='exhale';setPhase('exhale')}startCloud();window.setTimeout(()=>{phaseRef.current='rest';setPhase('rest')},3000)};
+ const release=()=>{if(phaseTimer.current)window.clearTimeout(phaseTimer.current);phaseRef.current='exhale';setPhase('exhale');startCloud();phaseTimer.current=window.setTimeout(()=>{phaseRef.current='rest';setPhase('rest')},3000)};
  const pressAction=()=>{if(phaseRef.current==='rest')beginRitual();else release()};
  useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if(e.code==='Space'&&!(e.target instanceof HTMLInputElement)&&!(e.target instanceof HTMLButtonElement)){e.preventDefault();pressAction()}};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey)});
 
@@ -58,7 +59,8 @@ function App() {
      const burst=!calibrating&&rms>threshold;
      if(calibrating||!burst)baseline=baseline*.96+rms*.04;
      if(performance.now()-audioUiTime.current>120){setAudioLevel(Math.min(100,Math.round(rms*MIC_METER_SCALE)));audioUiTime.current=performance.now()}
-     if(burst&&performance.now()-lastBurst.current>1900){lastBurst.current=performance.now();if(phaseRef.current==='rest')beginRitual();else release()}
+     const now=performance.now();
+     if(burst&&now-lastBurst.current>MIC_BURST_COOLDOWN_MS){lastBurst.current=now;release()}
      audioFrame.current=requestAnimationFrame(sample)
     };
     audioFrame.current=requestAnimationFrame(sample)
