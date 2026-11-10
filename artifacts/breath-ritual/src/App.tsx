@@ -6,6 +6,8 @@ type Phase = 'rest' | 'inhale' | 'hold' | 'exhale';
 type VaporStyle = 'moon' | 'sage' | 'rose';
 type Particle = { x:number;y:number;vx:number;vy:number;life:number;max:number;size:number;seed:number;style:number };
 const copy = {rest:{label:'A quiet moment',instruction:'Whenever you’re ready, begin.'},inhale:{label:'Breathe in',instruction:'Let the breath arrive.'},hold:{label:'Pause gently',instruction:'There is nothing to rush.'},exhale:{label:'Let it go',instruction:'Release, and watch it soften.'}};
+const MIC_METER_SCALE=2500;
+const MIC_MIN_TRIGGER_PERCENT=5;
 
 function App() {
  const videoRef=useRef<HTMLVideoElement>(null),canvasRef=useRef<HTMLCanvasElement>(null),streamRef=useRef<MediaStream|null>(null),micRef=useRef<MediaStream|null>(null),audioRef=useRef<AudioContext|null>(null),rafRef=useRef<number>(0),particles=useRef<Particle[]>([]),phaseTimer=useRef<number|undefined>(undefined),audioFrame=useRef<number>(0),lastBurst=useRef(0),lastTime=useRef(0),audioUiTime=useRef(0),phaseRef=useRef<Phase>('rest');
@@ -52,10 +54,10 @@ function App() {
      let sum=0;for(const value of samples)sum+=value*value;
      const rms=Math.sqrt(sum/samples.length);
      const calibrating=performance.now()<calibrationEnds;
-     const threshold=Math.max(.0025,baseline*1.35);
+     const threshold=Math.max(MIC_MIN_TRIGGER_PERCENT/MIC_METER_SCALE,baseline*1.35);
      const burst=!calibrating&&rms>threshold;
      if(calibrating||!burst)baseline=baseline*.96+rms*.04;
-     if(performance.now()-audioUiTime.current>120){setAudioLevel(Math.min(100,Math.round(rms*2500)));audioUiTime.current=performance.now()}
+     if(performance.now()-audioUiTime.current>120){setAudioLevel(Math.min(100,Math.round(rms*MIC_METER_SCALE)));audioUiTime.current=performance.now()}
      if(burst&&performance.now()-lastBurst.current>1900){lastBurst.current=performance.now();if(phaseRef.current==='rest')beginRitual();else release()}
      audioFrame.current=requestAnimationFrame(sample)
     };
