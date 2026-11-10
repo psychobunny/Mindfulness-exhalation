@@ -32,7 +32,39 @@ function App() {
  const pressAction=()=>{if(phaseRef.current==='rest')beginRitual();else release()};
  useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if(e.code==='Space'&&!(e.target instanceof HTMLInputElement)&&!(e.target instanceof HTMLButtonElement)){e.preventDefault();pressAction()}};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey)});
 
- const enableMic=async()=>{if(micState==='listening'){stopMic();return}if(!navigator.mediaDevices?.getUserMedia){setMicState('error');setMicError('Microphone access is not available in this browser.');return}setMicState('requesting');setMicError('');try{const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});micRef.current=stream;const Ctx=window.AudioContext||(window as typeof window & {webkitAudioContext?:typeof AudioContext}).webkitAudioContext;if(!Ctx)throw new Error('Audio analysis is not supported in this browser.');const audio=new Ctx();audioRef.current=audio;const source=audio.createMediaStreamSource(stream),analyser=audio.createAnalyser();analyser.fftSize=512;source.connect(analyser);setMicState('listening');const samples=new Uint8Array(analyser.fftSize);let baseline=.008;const sample=()=>{analyser.getByteTimeDomainData(samples);let sum=0;for(const v of samples){const n=(v-128)/128;sum+=n*n}const rms=Math.sqrt(sum/samples.length);baseline=baseline*.96+rms*.04;if(performance.now()-audioUiTime.current>120){setAudioLevel(Math.min(100,Math.round(rms*850)));audioUiTime.current=performance.now()}const burst=rms>Math.max(.045,baseline*2.65);if(burst&&performance.now()-lastBurst.current>1900){lastBurst.current=performance.now();if(phaseRef.current==='rest')beginRitual();else release()}audioFrame.current=requestAnimationFrame(sample)};audioFrame.current=requestAnimationFrame(sample)}catch(error){stopMic();setMicState('error');setMicError(error instanceof DOMException&&error.name==='NotAllowedError'?'Microphone permission was declined. Allow it in browser settings to use sound-level mode.':'Microphone input could not be started. Try again or use manual mode.')}};
+  const enableMic=async()=>{
+   if(micState==='listening'){stopMic();return}
+   if(!navigator.mediaDevices?.getUserMedia){setMicState('error');setMicError('Microphone access is not available in this browser.');return}
+   setMicState('requesting');setMicError('');
+   try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:true},video:false});
+    micRef.current=stream;
+    const Ctx=window.AudioContext||(window as typeof window & {webkitAudioContext?:typeof AudioContext}).webkitAudioContext;
+    if(!Ctx)throw new Error('Audio analysis is not supported in this browser.');
+    const audio=new Ctx();audioRef.current=audio;
+    const source=audio.createMediaStreamSource(stream),analyser=audio.createAnalyser();
+    analyser.fftSize=1024;source.connect(analyser);setMicState('listening');
+    const samples=new Float32Array(analyser.fftSize);
+    let baseline=.001;
+    const calibrationEnds=performance.now()+500;
+    const sample=()=>{
+     analyser.getFloatTimeDomainData(samples);
+     let sum=0;for(const value of samples)sum+=value*value;
+     const rms=Math.sqrt(sum/samples.length);
+     const calibrating=performance.now()<calibrationEnds;
+     const threshold=Math.max(.0025,baseline*1.35);
+     const burst=!calibrating&&rms>threshold;
+     if(calibrating||!burst)baseline=baseline*.96+rms*.04;
+     if(performance.now()-audioUiTime.current>120){setAudioLevel(Math.min(100,Math.round(rms*2500)));audioUiTime.current=performance.now()}
+     if(burst&&performance.now()-lastBurst.current>1900){lastBurst.current=performance.now();if(phaseRef.current==='rest')beginRitual();else release()}
+     audioFrame.current=requestAnimationFrame(sample)
+    };
+    audioFrame.current=requestAnimationFrame(sample)
+   }catch(error){
+    stopMic();setMicState('error');
+    setMicError(error instanceof DOMException&&error.name==='NotAllowedError'?'Microphone permission was declined. Allow it in browser settings to use sound-level mode.':'Microphone input could not be started. Try again or use manual mode.')
+   }
+  };
 
  const fallback=cameraState!=='active';const phaseClass=`phase-${phase}`;
  return <main className={`app-shell ${cameraState==='active'?'camera-active':''}`}>
