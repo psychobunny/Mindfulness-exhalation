@@ -1,0 +1,34 @@
+Build a complete, single-page web application MVP for a virtual "smoke/vape" simulator designed as a behavioral substitution tool. The app uses the device's front-facing camera as a mirrored background and generates a realistic smoke/vapor cloud animation that triggers on exhale.
+
+### Tech Stack & Architecture:
+- Framework: Vite + React (or Vanilla JavaScript + HTML5 Canvas, whichever is cleaner and fastest to render).
+- Styling: Tailwind CSS for a sleek, modern, dark-themed UI (think minimalist wellness / digital ritual app).
+- Core Libraries: 
+  - Tailwind for layout.
+  - Lucide React for clean UI icons.
+  - Standard HTML5 Canvas API (or lightweight custom particle engine) for high-performance particle rendering.
+
+### Core Features to Implement:
+
+1. Camera Feed & Mirroring:
+   - Access the user's front-facing camera using `navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })`.
+   - Display the video stream full-screen as a background layer, flipped horizontally (CSS: `transform: scaleX(-1)`) so it acts as a natural mirror.
+   - Include a permission request state and fallback error handling if the camera is blocked or unavailable.
+
+2. Interaction Trigger (Simulation Modes):
+   - Provide a toggle or dual-mode setup for triggering the "exhale" smoke effect:
+     - Mode A (Manual/Click): Tap or hold a prominent "Inhale / Hold / Blow" button on screen.
+     - Mode B (Mic/Breath Detection - Optional toggle): Uses the Web Audio API to detect a sharp burst of air/white noise from the microphone (blowing into a straw or past the mic), automatically triggering the cloud.
+     - Mode C (Spacebar / Keyboard shortcut): For easy desktop testing.
+
+3. Smoke Particle Effect Engine:
+   - When triggered, spawn a dynamic particle system on an HTML5 canvas overlay positioned directly over the user's mouth area (or centered near the lower-middle section of the screen if tracking isn't fully calibrated).
+   - Particles should billow outward, expand, drift upward slightly, swirl with gentle turbulence, and fade out smoothly (alpha transparency decay).
+   - Allow users to tweak particle properties in a collapsible settings menu (e.g., density, cloud thickness, color tint/vapor style).
+
+4. Sensory Feedback & Polish:
+   - Subtle audio cue (synthesized "whoosh" using Web Audio API or a soft sound effect) when the smoke cloud triggers.
+   - Haptic vibration trigger (`navigator.vibrate`) on supported mobile devices to enhance the tactile illusion.
+   - Minimalist HUD overlay with a "Take a Breath" counter or session streak tracker to gamify the mindfulness/substitution aspect.
+
+Ensure the code is clean, modular, fully self-contained within the Replit structure, and includes a clear README on how to run and test it.

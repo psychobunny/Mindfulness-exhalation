@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Breath Ritual"
+description = "A private, camera-based breathing ritual that offers an optional vapor animation as a behavioral substitution tool, with manual or microphone-triggered controls and adjustable effects."
+version = "1.0.0"
+id = "artifacts/breath-ritual"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22498
+
+[services.development]
+run = "pnpm --filter @workspace/breath-ritual run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/breath-ritual", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/breath-ritual/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22498"
+BASE_PATH = "/"
